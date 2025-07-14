@@ -86,10 +86,10 @@ struct NTSCTimings {
 struct VideoFrame {
   int width = VISIBLE_WIDTH;
   int height = VISIBLE_HEIGHT / 2; // Per field (240 lines for interlaced)
+  bool is_field_odd = true;        // True for Field 1 (odd lines)
+  std::vector<std::array<double, 3>> pixels; // Row-major (R/Y, G/I, B/Q)
 
-  bool is_field_odd = true; // True for Field 1 (odd lines)
-  std::vector<std::array<double, 3>>
-      pixels; // Row-major, height * width elements total, each [R/Y, G/I, B/Q]
+  // VideoFrame constructor
   VideoFrame() { pixels.resize(height * width); }
 
   // Convert pixels from RGB to YIQ in place
