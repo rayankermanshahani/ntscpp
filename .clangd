@@ -1,0 +1,7 @@
+CompileFlags:
+  Add: 
+    - -std=c++23
+    - -I/opt/homebrew/include
+    - -Wall
+    - -Wextra
+
