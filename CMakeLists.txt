@@ -16,16 +16,10 @@ pkg_check_modules(SWSCALE libswscale REQUIRED)
 pkg_check_modules(FFTW fftw3 REQUIRED)
 
 # explicitly find fftw threads library 
-#(homebrew on macos doesn't provide a separate pkg-config for it)
+# (homebrew on macos doesn't provide a separate pkg-config for it)
 find_library(FFTW_THREADS_LIBRARY NAMES fftw3_threads 
   HINTS /opt/homebrew/lib /usr/local/lib
 )
-# if (NOT FFTW_THREADS_LIBRARY)
-#   message(FATAL_ERROR 
-#     "FFTW threads library not found. Ensure 'brew install fftw' was run and check /opt/homebrew/lib/libfftw3_threads.dylib exists."
-#   )
-# endif()
-
 
 include_directories(
   ${CMAKE_SOURCE_DIR}
