@@ -47,67 +47,41 @@ void generate_half_blank(SignalSamples& samples, double& subcarrier_phase) {
 }
 
 // Generate the vertical sync block (9 lines worth of pulses, no burst)
-void generate_v_sync_block(SignalSamples& samples, double& subcarrier_phase,
-                           bool is_field_odd) {
+void generate_v_sync_block(SignalSamples& samples, double& subcarrier_phase) {
   double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
-  const int full_line = SAMPLES_PER_LINE;     // ~910 samples
-  const int half_line = SAMPLES_PER_LINE / 2; // ~455 samples
-  const int eq_pulse = EQ_PULSE_SAMPLES;      // ~33 samples (2.3 us)
-  const int eq_blank = half_line - eq_pulse;  // remainder of half-line
 
-  // If even field, start with half-blank line
-  if (!is_field_odd) {
-    for (int i = 0; i < half_line; ++i) {
-      samples.push_back(BLANKING_LEVEL);
+  // Pre-equalizing: 6 intervals (high) + 6 equalizing pulses
+  for (int p = 0; p < 6; ++p) {
+    for (int i = 0; i < EQ_INTERVAL_SAMPLES; ++i) {
+      samples.push_back(BLANKING_LEVEL); // Interval (high)
       subcarrier_phase += dphase;
     }
-  }
-
-  // Start with 1.5 us blank (vertical blanking starts before first eq pulse)
-  int start_blank_samples = FRONT_PORCH_SAMPLES;
-  for (int i = 0; i < start_blank_samples; ++i) {
-    samples.push_back(BLANKING_LEVEL);
-    subcarrier_phase += dphase;
-  }
-
-  // First 6 equalizing pulses
-  for (int p = 0; p < 6; ++p) {
     for (int i = 0; i < EQ_PULSE_SAMPLES; ++i) {
-      samples.push_back(SYNC_LEVEL);
-      subcarrier_phase += dphase;
-    }
-    int interval =
-        (p < 5) ? EQ_INTERVAL_SAMPLES : EQ_INTERVAL_SAMPLES; // consistent
-    for (int i = 0; i < interval; ++i) {
-      samples.push_back(BLANKING_LEVEL);
+      samples.push_back(SYNC_LEVEL); // Eq pulse (low)
       subcarrier_phase += dphase;
     }
   }
 
-  // TODO: NEED TO FIX VBI'S NUMBER OF PULSES HERE!!!!
-  // 6 broad pulses + 5 serrated pulses for vertical sync
+  // Vertical sync: 6 serrations (high) + 6 broad pulses (low)
   for (int p = 0; p < 6; ++p) {
+    for (int i = 0; i < SERRATION_SAMPLES; ++i) {
+      samples.push_back(BLANKING_LEVEL); // Serration (high)
+      subcarrier_phase += dphase;
+    }
     for (int i = 0; i < BROAD_PULSE_SAMPLES; ++i) {
-      samples.push_back(SYNC_LEVEL);
+      samples.push_back(SYNC_LEVEL); // Broad (low)
       subcarrier_phase += dphase;
-    }
-    if (p < 5) {
-      for (int i = 0; i < SERRATION_SAMPLES; ++i) {
-        samples.push_back(BLANKING_LEVEL);
-        subcarrier_phase += dphase;
-      }
     }
   }
 
-  // Last 6 equalizing pulses
+  // Post-equalizing: 6 intervals (high) + 6 equalizing pulses
   for (int p = 0; p < 6; ++p) {
-    for (int i = 0; i < EQ_PULSE_SAMPLES; ++i) {
-      samples.push_back(SYNC_LEVEL);
+    for (int i = 0; i < EQ_INTERVAL_SAMPLES; ++i) {
+      samples.push_back(BLANKING_LEVEL); // Interval (high)
       subcarrier_phase += dphase;
     }
-    int interval = EQ_INTERVAL_SAMPLES;
-    for (int i = 0; i < interval; ++i) {
-      samples.push_back(BLANKING_LEVEL);
+    for (int i = 0; i < EQ_PULSE_SAMPLES; ++i) {
+      samples.push_back(SYNC_LEVEL); // Eq pulse (low)
       subcarrier_phase += dphase;
     }
   }
@@ -207,11 +181,9 @@ SignalSamples encode_field(const VideoFrame& input_frame) {
   yiq_frame.to_yiq();
 
   SignalSamples field_signal;
-  NTSCTimings timings;
   double subcarrier_phase = 0.0; // assume start at 0; chain if multiple fields
 
   bool is_odd_field = input_frame.is_field_odd;
-  double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
 
   // For even field, add half-line blank to shift sync block
   if (!is_odd_field) {
