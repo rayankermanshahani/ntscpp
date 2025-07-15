@@ -6,42 +6,64 @@
 #include <cstdint>
 #include <vector>
 
-// NTSC constants (based on NTSC-M specs)
-constexpr double SUBCARRIER_FREQ = 3.579545e6;  // Hz (exact: 315/88 MHz)
-constexpr double FIELD_RATE = 59.94005994;      // Fields/sec
-constexpr double FRAME_RATE = FIELD_RATE / 2.0; // ~29.97 fps
-constexpr double LINE_RATE = 15734.265734; // Hz (approx 525 * FIELD_RATE / 2)
-constexpr double LINE_DURATION_US = 1e6 / LINE_RATE;    // ~63.556 us
-constexpr double SAMPLING_RATE = 4.0 * SUBCARRIER_FREQ; // ~14.31818 MHz
-constexpr int SAMPLES_PER_LINE =
-    static_cast<int>(SAMPLING_RATE / LINE_RATE + 0.5); // ~910 samples/line
+/* Constants based on NTSC-M specs */
 
-// Precomputed timing offsets in samples
-constexpr double FRONT_PORCH_US = 1.5;
-constexpr double H_SYNC_US = 4.7;
-constexpr double BREEZEWAY_US = 0.6;
-constexpr double COLOR_BURST_US = 2.5;
-constexpr double BACK_PORCH_US = 1.6;
+// Helper function for constant expression rounding
+constexpr int const_round(double x) {
+  return x >= 0 ? static_cast<int>(x + 0.5) : static_cast<int>(x - 0.5);
+}
+
+/* Frequencies */
+constexpr double SUBCARRIER_FREQ = 3.15e8 / 88.0;           // ~3.579 MHz
+constexpr double LINE_RATE = 2.0 * SUBCARRIER_FREQ / 455.0; // ~15.734 kHz
+constexpr double FIELD_RATE = LINE_RATE * (2.0 / 525.0);    // ~59.94 Hz
+constexpr double FRAME_RATE = FIELD_RATE / 2.0;             // ~29.97 Hz
+
+/* Durations and sample counts */
+constexpr double LINE_DURATION_US = 1e6 / LINE_RATE;    // ~63.556 us
+constexpr double SAMPLING_RATE = 4.0 * SUBCARRIER_FREQ; // ~14.318 MHz
+constexpr int SAMPLES_PER_LINE = const_round(SAMPLING_RATE / LINE_RATE); // 910
+
+/* Timing */
+constexpr double FRONT_PORCH_US = 1.5; // ~1.5 μs
+constexpr double H_SYNC_US = 4.7;      // ~4.7 μs
+constexpr double BREEZEWAY_US = 0.6;   // ~2.5 μs
+constexpr double COLOR_BURST_US = 2.5; // ~2.5 μs
+constexpr double BACK_PORCH_US = 1.6;  // ~1.6 μs
 constexpr double ACTIVE_VIDEO_US =
     LINE_DURATION_US - (FRONT_PORCH_US + H_SYNC_US + BREEZEWAY_US +
-                        COLOR_BURST_US + BACK_PORCH_US); // ~52.655 us
+                        COLOR_BURST_US + BACK_PORCH_US); // ~52.655 μs
 
+/* Samples */
 constexpr int FRONT_PORCH_SAMPLES =
-    static_cast<int>(FRONT_PORCH_US * SAMPLING_RATE / 1e6 + 0.5);
-constexpr int H_SYNC_SAMPLES =
-    static_cast<int>(H_SYNC_US * SAMPLING_RATE / 1e6 + 0.5);
+    const_round(FRONT_PORCH_US * SAMPLING_RATE / 1e6);
+constexpr int H_SYNC_SAMPLES = const_round(H_SYNC_US * SAMPLING_RATE / 1e6);
 constexpr int BREEZEWAY_SAMPLES =
-    static_cast<int>(BREEZEWAY_US * SAMPLING_RATE / 1e6 + 0.5);
+    const_round(BREEZEWAY_US * SAMPLING_RATE / 1e6);
 constexpr int COLOR_BURST_SAMPLES =
-    static_cast<int>(COLOR_BURST_US * SAMPLING_RATE / 1e6 + 0.5);
+    const_round(COLOR_BURST_US * SAMPLING_RATE / 1e6);
 constexpr int BACK_PORCH_SAMPLES =
-    static_cast<int>(BACK_PORCH_US * SAMPLING_RATE / 1e6 + 0.5);
+    const_round(BACK_PORCH_US * SAMPLING_RATE / 1e6);
 constexpr int ACTIVE_VIDEO_SAMPLES =
-    SAMPLES_PER_LINE -
-    (FRONT_PORCH_SAMPLES + H_SYNC_SAMPLES + BREEZEWAY_SAMPLES +
-     COLOR_BURST_SAMPLES + BACK_PORCH_SAMPLES);
+    const_round(ACTIVE_VIDEO_US * SAMPLING_RATE / 1e6);
 
-// Video dimensions
+/* VBI timings (half-line based) */
+constexpr double HALF_LINE_US = LINE_DURATION_US / 2.0;        // ~31.778 μs
+constexpr double EQ_PULSE_US = 2.3;                            // ~2.3 μs
+constexpr double EQ_INTERVAL_US = HALF_LINE_US - EQ_PULSE_US;  // ~29.478 μs
+constexpr double SERRATION_US = H_SYNC_US;                     // ~4.7 μs
+constexpr double BROAD_PULSE_US = HALF_LINE_US - SERRATION_US; // ~27.078 μs
+
+/* VBI samples (half-line based) */
+constexpr int EQ_PULSE_SAMPLES = const_round(EQ_PULSE_US * SAMPLING_RATE / 1e6);
+constexpr int EQ_INTERVAL_SAMPLES =
+    const_round(EQ_INTERVAL_US * SAMPLING_RATE / 1e6);
+constexpr int SERRATION_SAMPLES =
+    const_round(SERRATION_US * SAMPLING_RATE / 1e6);
+constexpr int BROAD_PULSE_SAMPLES =
+    const_round(BROAD_PULSE_US * SAMPLING_RATE / 1e6);
+
+/* Video dimensions */
 constexpr int VISIBLE_WIDTH = 720;   // Pixels per line
 constexpr int VISIBLE_HEIGHT = 480;  // Visible lines per frame
 constexpr int LINES_PER_FIELD = 263; // Approx; Field 1: 262.5, but integerize
@@ -50,7 +72,7 @@ constexpr int LINES_PER_FRAME = 525;
 constexpr int VBI_LINES_PER_FIELD =
     LINES_PER_FIELD - (VISIBLE_HEIGHT / 2); // ~21
 
-// Signal levels (normalized for full range: -40 to 100 IRE = 140 IRE units)
+/* Signal levels (normalized for full range: -40 to 100 IRE = 140 IRE units) */
 constexpr double IRE_TO_NORM = 1.0 / 100.0; // Scale from IRE (offset for sync)
 constexpr double SYNC_LEVEL = -40.0 * IRE_TO_NORM;
 constexpr double BLANKING_LEVEL = 0.0;
@@ -58,18 +80,20 @@ constexpr double BLACK_LEVEL = 7.5 * IRE_TO_NORM;
 constexpr double WHITE_LEVEL = 100.0 * IRE_TO_NORM;
 constexpr double BURST_AMPLITUDE = 20.0 * IRE_TO_NORM; // 20 IRE p-p
 
-// Color matrices
+// RGB to YIQ color matrix
 constexpr std::array<std::array<double, 3>, 3> RGB_TO_YIQ_MATRIX = {
     {{0.299, 0.587, 0.114},       // Y
      {0.5959, -0.2746, -0.3213},  // I
      {0.2115, -0.5227, 0.3112}}}; // Q
 
+// YIQ to RGB color matrix
 constexpr std::array<std::array<double, 3>, 3> YIQ_TO_RGB_MATRIX = {
     {{1.0, 0.956, 0.619},    // R
      {1.0, -0.272, -0.647},  // G
      {1.0, -1.106, 1.703}}}; // B
 
-// Data structures
+/* Data Structures */
+
 using SignalSamples = std::vector<double>; // Sequence of normalized composite
                                            // samples in range [-0.4, 1.0]
 
@@ -119,8 +143,8 @@ struct VideoFrame {
   }
 };
 
-// Core functions
-//
+/* Core functions */
+
 // Generate subcarrier value at time t (seconds), with phase offset (radians)
 inline double subcarrier(double t, double phase_offset = 0.0) {
   return std::sin(2.0 * M_PI * SUBCARRIER_FREQ * t + phase_offset);
