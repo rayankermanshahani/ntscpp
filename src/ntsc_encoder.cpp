@@ -16,22 +16,6 @@
 #include <sys/wait.h>
 #include <vector>
 
-// Additional constants for VBI
-constexpr double EQ_PULSE_US = 2.3; // Equalizing pulses
-constexpr double EQ_INTERVAL_US = (LINE_DURATION_US / 2.0) - EQ_PULSE_US;
-constexpr double BROAD_PULSE_US = (LINE_DURATION_US / 2.0) - H_SYNC_US;
-constexpr double SERRATION_US = H_SYNC_US;
-
-// Number of discrete samples for each signal portion
-constexpr int EQ_PULSE_SAMPLES =
-    static_cast<int>(EQ_PULSE_US * SAMPLING_RATE / 1e6 + 0.5);
-constexpr int EQ_INTERVAL_SAMPLES =
-    static_cast<int>(EQ_INTERVAL_US * SAMPLING_RATE / 1e6 + 0.5);
-constexpr int BROAD_PULSE_SAMPLES =
-    static_cast<int>(BROAD_PULSE_US * SAMPLING_RATE / 1e6 + 0.5);
-constexpr int SERRATION_SAMPLES =
-    static_cast<int>(SERRATION_US * SAMPLING_RATE / 1e6 + 0.5);
-
 // Number of remaining VBI lines after the 9-line sync block (to approximate
 // 20-21 lines total VBI)
 constexpr int REMAINING_VBI_LINES = 12;
@@ -50,40 +34,30 @@ void generate_half_blank(SignalSamples& samples, double& subcarrier_phase) {
 void generate_v_sync_block(SignalSamples& samples, double& subcarrier_phase) {
   double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
 
-  // Pre-equalizing: 6 intervals (high) + 6 equalizing pulses
-  for (int p = 0; p < 6; ++p) {
-    for (int i = 0; i < EQ_INTERVAL_SAMPLES; ++i) {
-      samples.push_back(BLANKING_LEVEL); // Interval (high)
+  // Lambda function to append segments of samples to signal
+  auto signal_push = [&](double level, int n_samples) {
+    for (int i = 0; i < n_samples; ++i) {
+      samples.push_back(level);
       subcarrier_phase += dphase;
     }
-    for (int i = 0; i < EQ_PULSE_SAMPLES; ++i) {
-      samples.push_back(SYNC_LEVEL); // Eq pulse (low)
-      subcarrier_phase += dphase;
-    }
+  };
+
+  // Pre-equalizing: 6 half-lines
+  for (int k = 0; k < 6; ++k) {
+    signal_push(SYNC_LEVEL, EQ_PULSE_SAMPLES); // 6 equalizing pulses (low)
+    signal_push(BLANKING_LEVEL, EQ_INTERVAL_SAMPLES); // 6 intervals (high)
   }
 
-  // Vertical sync: 6 serrations (high) + 6 broad pulses (low)
-  for (int p = 0; p < 6; ++p) {
-    for (int i = 0; i < SERRATION_SAMPLES; ++i) {
-      samples.push_back(BLANKING_LEVEL); // Serration (high)
-      subcarrier_phase += dphase;
-    }
-    for (int i = 0; i < BROAD_PULSE_SAMPLES; ++i) {
-      samples.push_back(SYNC_LEVEL); // Broad (low)
-      subcarrier_phase += dphase;
-    }
+  // Vertical sync: 6 half-lines
+  for (int k = 0; k < 6; ++k) {
+    signal_push(SYNC_LEVEL, BROAD_PULSE_SAMPLES);   // 6 broad pulses (low)
+    signal_push(BLANKING_LEVEL, SERRATION_SAMPLES); // 6 serrations (high)
   }
 
-  // Post-equalizing: 6 intervals (high) + 6 equalizing pulses
-  for (int p = 0; p < 6; ++p) {
-    for (int i = 0; i < EQ_INTERVAL_SAMPLES; ++i) {
-      samples.push_back(BLANKING_LEVEL); // Interval (high)
-      subcarrier_phase += dphase;
-    }
-    for (int i = 0; i < EQ_PULSE_SAMPLES; ++i) {
-      samples.push_back(SYNC_LEVEL); // Eq pulse (low)
-      subcarrier_phase += dphase;
-    }
+  // Post-equalizing: 6 half-lines
+  for (int k = 0; k < 6; ++k) {
+    signal_push(SYNC_LEVEL, EQ_PULSE_SAMPLES); // 6 equalizing pulses (low)
+    signal_push(BLANKING_LEVEL, EQ_INTERVAL_SAMPLES); // 6 intervals (high)
   }
 }
 
