@@ -8,12 +8,10 @@
  * (FCC approval December 17 1953) and SMPTE-170M tolerances.
  */
 
-#include "dsp_utils.h"
-#include "ntsc_common.h"
+#include "../include/dsp_utils.h"
+#include "../include/ntsc_common.h"
 #include <array>
-#include <cctype>
 #include <cmath>
-#include <sys/wait.h>
 #include <vector>
 
 // Number of remaining VBI lines after the 9-line sync block (to approximate

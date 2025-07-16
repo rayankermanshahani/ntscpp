@@ -1,3 +1,10 @@
+/*
+ * dsp_utils.h
+ *
+ * Declarations for DSP utility functions used in NTSC signal processing.
+ * Includes filters, phase detection, and resampling functions.
+ */
+
 #ifndef DSP_UTILS_H
 #define DSP_UTILS_H
 

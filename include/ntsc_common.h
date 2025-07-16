@@ -1,3 +1,11 @@
+/*
+ * ntsc_common.h
+ *
+ * Shared constants, structures, and utility functions for NTSC
+ * encoding/decoding. Defines NTSC-M timings, IRE levels, conversion matrices,
+ * and data types used across the project.
+ */
+
 #ifndef NTSC_COMMON_H
 #define NTSC_COMMON_H
 

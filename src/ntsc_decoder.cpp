@@ -9,13 +9,10 @@
  * Matches encoder's timing/levels for loopback testing.
  */
 
-#include "dsp_utils.h"
-#include "ntsc_common.h"
+#include "../include/dsp_utils.h"
+#include "../include/ntsc_common.h"
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <cstddef>
-#include <iterator>
 #include <vector>
 
 // Sync detection threshold (midway between BLANKING_LEVEL and SYNC_LEVEL

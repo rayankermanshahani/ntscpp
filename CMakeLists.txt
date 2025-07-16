@@ -22,7 +22,7 @@ find_library(FFTW_THREADS_LIBRARY NAMES fftw3_threads
 )
 
 include_directories(
-  ${CMAKE_SOURCE_DIR}
+  ${PROJECT_SOURCE_DIR}/include
   ${AVFORMAT_INCLUDE_DIRS}
   ${AVCODEC_INCLUDE_DIRS}
   ${AVUTIL_INCLUDE_DIRS}
@@ -49,4 +49,3 @@ target_link_libraries(ntscpp
 
 # performance optimization flags
 target_compile_options(ntscpp PRIVATE -O3 -march=native)
-
