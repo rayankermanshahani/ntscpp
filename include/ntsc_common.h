@@ -1,9 +1,9 @@
-/*
- * ntsc_common.h
+/**
+ * @file ntsc_common.h
+ * @brief Shared NTSC-M constants, types, and utility functions.
  *
- * Shared constants, structures, and utility functions for NTSC
- * encoding/decoding. Defines NTSC-M timings, IRE levels, conversion matrices,
- * and data types used across the project.
+ * Defines timing parameters, sample counts, signal levels, and color conversion
+ * matrices per FCC 1953 and SMPTE 170 M NTSC-M specification.
  */
 
 #ifndef NTSC_COMMON_H
@@ -14,35 +14,32 @@
 #include <cstdint>
 #include <vector>
 
-/* Constants based on NTSC-M specs */
-
-// Helper function for constant expression rounding
+/// Helper for compile-time rounding of double floating-piont to nearest integer
 constexpr int const_round(double x) {
   return x >= 0 ? static_cast<int>(x + 0.5) : static_cast<int>(x - 0.5);
 }
 
 /* Frequencies */
-constexpr double SUBCARRIER_FREQ = 3.15e8 / 88.0;           // ~3.579 MHz
-constexpr double LINE_RATE = 2.0 * SUBCARRIER_FREQ / 455.0; // ~15.734 kHz
-constexpr double FIELD_RATE = LINE_RATE * (2.0 / 525.0);    // ~59.94 Hz
-constexpr double FRAME_RATE = FIELD_RATE / 2.0;             // ~29.97 Hz
+constexpr double SUBCARRIER_FREQ = 3.15e8 / 88.0;           ///< ~3.579 MHz
+constexpr double LINE_RATE = 2.0 * SUBCARRIER_FREQ / 455.0; ///< ~15.734 kHz
+constexpr double FIELD_RATE = LINE_RATE * (2.0 / 525.0);    ///< ~59.94 Hz
+constexpr double FRAME_RATE = FIELD_RATE / 2.0;             ///< ~29.97 Hz
 
-/* Durations and sample counts */
-constexpr double LINE_DURATION_US = 1e6 / LINE_RATE;    // ~63.556 us
-constexpr double SAMPLING_RATE = 4.0 * SUBCARRIER_FREQ; // ~14.318 MHz
-constexpr int SAMPLES_PER_LINE = const_round(SAMPLING_RATE / LINE_RATE); // 910
+/* Durations */
+constexpr double LINE_DURATION_US = 1e6 / LINE_RATE;    ///< ~63.556 us
+constexpr double SAMPLING_RATE = 4.0 * SUBCARRIER_FREQ; ///< ~14.318 MHz
+constexpr int SAMPLES_PER_LINE =
+    const_round(SAMPLING_RATE / LINE_RATE); ///< 910
 
-/* Timing */
-constexpr double FRONT_PORCH_US = 1.5; // ~1.5 μs
-constexpr double H_SYNC_US = 4.7;      // ~4.7 μs
-constexpr double BREEZEWAY_US = 0.6;   // ~2.5 μs
-constexpr double COLOR_BURST_US = 2.5; // ~2.5 μs
-constexpr double BACK_PORCH_US = 1.6;  // ~1.6 μs
+constexpr double FRONT_PORCH_US = 1.5; ///< ~1.5 μs
+constexpr double H_SYNC_US = 4.7;      ///< ~4.7 μs
+constexpr double BREEZEWAY_US = 0.6;   ///< ~2.5 μs
+constexpr double COLOR_BURST_US = 2.5; ///< ~2.5 μs
+constexpr double BACK_PORCH_US = 1.6;  ///< ~1.6 μs
 constexpr double ACTIVE_VIDEO_US =
     LINE_DURATION_US - (FRONT_PORCH_US + H_SYNC_US + BREEZEWAY_US +
-                        COLOR_BURST_US + BACK_PORCH_US); // ~52.655 μs
+                        COLOR_BURST_US + BACK_PORCH_US); ///< ~52.655 μs
 
-/* Samples */
 constexpr int FRONT_PORCH_SAMPLES =
     const_round(FRONT_PORCH_US * SAMPLING_RATE / 1e6);
 constexpr int H_SYNC_SAMPLES = const_round(H_SYNC_US * SAMPLING_RATE / 1e6);
@@ -55,14 +52,13 @@ constexpr int BACK_PORCH_SAMPLES =
 constexpr int ACTIVE_VIDEO_SAMPLES =
     const_round(ACTIVE_VIDEO_US * SAMPLING_RATE / 1e6);
 
-/* VBI timings (half-line based) */
-constexpr double HALF_LINE_US = LINE_DURATION_US / 2.0;        // ~31.778 μs
-constexpr double EQ_PULSE_US = 2.3;                            // ~2.3 μs
-constexpr double EQ_INTERVAL_US = HALF_LINE_US - EQ_PULSE_US;  // ~29.478 μs
-constexpr double SERRATION_US = H_SYNC_US;                     // ~4.7 μs
-constexpr double BROAD_PULSE_US = HALF_LINE_US - SERRATION_US; // ~27.078 μs
+/* VBI half-line timings */
+constexpr double HALF_LINE_US = LINE_DURATION_US / 2.0;        ///< ~31.778 μs
+constexpr double EQ_PULSE_US = 2.3;                            ///< ~2.3 μs
+constexpr double EQ_INTERVAL_US = HALF_LINE_US - EQ_PULSE_US;  ///< ~29.478 μs
+constexpr double SERRATION_US = H_SYNC_US;                     ///< ~4.7 μs
+constexpr double BROAD_PULSE_US = HALF_LINE_US - SERRATION_US; ///< ~27.078 μs
 
-/* VBI samples (half-line based) */
 constexpr int EQ_PULSE_SAMPLES = const_round(EQ_PULSE_US * SAMPLING_RATE / 1e6);
 constexpr int EQ_INTERVAL_SAMPLES =
     const_round(EQ_INTERVAL_US * SAMPLING_RATE / 1e6);
@@ -72,39 +68,41 @@ constexpr int BROAD_PULSE_SAMPLES =
     const_round(BROAD_PULSE_US * SAMPLING_RATE / 1e6);
 
 /* Video dimensions */
-constexpr int VISIBLE_WIDTH = 720;   // Pixels per line
-constexpr int VISIBLE_HEIGHT = 480;  // Visible lines per frame
-constexpr int LINES_PER_FIELD = 263; // Approx; Field 1: 262.5, but integerize
-                                     // for sim (adjust for half-line)
+constexpr int VISIBLE_WIDTH = 720;
+constexpr int VISIBLE_HEIGHT = 480;
+constexpr int LINES_PER_FIELD = 263;
 constexpr int LINES_PER_FRAME = 525;
 constexpr int VBI_LINES_PER_FIELD =
-    LINES_PER_FIELD - (VISIBLE_HEIGHT / 2); // ~21
+    LINES_PER_FIELD - (VISIBLE_HEIGHT / 2); ///< ~21
 
-/* Signal levels (normalized for full range: -40 to 100 IRE = 140 IRE units) */
-constexpr double IRE_TO_NORM = 1.0 / 100.0; // Scale from IRE (offset for sync)
+/* Signal levels */
+constexpr double IRE_TO_NORM =
+    1.0 / 100.0; ///< scale from IRE (offset for sync)
 constexpr double SYNC_LEVEL = -40.0 * IRE_TO_NORM;
 constexpr double BLANKING_LEVEL = 0.0;
 constexpr double BLACK_LEVEL = 7.5 * IRE_TO_NORM;
 constexpr double WHITE_LEVEL = 100.0 * IRE_TO_NORM;
-constexpr double BURST_AMPLITUDE = 20.0 * IRE_TO_NORM; // 20 IRE p-p
+constexpr double BURST_AMPLITUDE = 20.0 * IRE_TO_NORM;
 
-// RGB to YIQ color matrix
+/// RGB to YIQ color matrix per NTSC-M
 constexpr std::array<std::array<double, 3>, 3> RGB_TO_YIQ_MATRIX = {
-    {{0.299, 0.587, 0.114},       // Y
-     {0.5959, -0.2746, -0.3213},  // I
-     {0.2115, -0.5227, 0.3112}}}; // Q
+    {{0.299, 0.587, 0.114},       ///< Y
+     {0.5959, -0.2746, -0.3213},  ///< I
+     {0.2115, -0.5227, 0.3112}}}; ///< Q
 
-// YIQ to RGB color matrix
+/// YIQ to RGB color matrix per NTSC-M
 constexpr std::array<std::array<double, 3>, 3> YIQ_TO_RGB_MATRIX = {
-    {{1.0, 0.956, 0.619},    // R
-     {1.0, -0.272, -0.647},  // G
-     {1.0, -1.106, 1.703}}}; // B
+    {{1.0, 0.956, 0.619},    ///< R
+     {1.0, -0.272, -0.647},  ///< G
+     {1.0, -1.106, 1.703}}}; ///< B
 
-/* Data Structures */
+/** Sequence of normalize composite samples */
+using SignalSamples = std::vector<double>;
 
-using SignalSamples = std::vector<double>; // Sequence of normalized composite
-                                           // samples in range [-0.4, 1.0]
-
+/**
+ * @struct NTSCTimings
+ * @brief Computed sample offsets for each line segment.
+ */
 struct NTSCTimings {
   int front_porch_start = 0;
   int h_sync_start = FRONT_PORCH_SAMPLES;
@@ -115,16 +113,20 @@ struct NTSCTimings {
   int active_video_samples = ACTIVE_VIDEO_SAMPLES;
 };
 
+/**
+ * @struct VideoFrame
+ * @brief Container for one NTSC-M field of pixel data.
+ */
 struct VideoFrame {
-  int width = VISIBLE_WIDTH;
-  int height = VISIBLE_HEIGHT / 2; // Per field (240 lines for interlaced)
-  bool is_field_odd = true;        // True for Field 1 (odd lines)
-  std::vector<std::array<double, 3>> pixels; // Row-major (R/Y, G/I, B/Q)
+  int width = VISIBLE_WIDTH;                 ///< pixels per line
+  int height = VISIBLE_HEIGHT / 2;           ///< lines per field
+  bool is_field_odd = true;                  ///< field parity
+  std::vector<std::array<double, 3>> pixels; ///< row-major RGB or YIQ
 
-  // VideoFrame constructor
+  /** Initialize pixel buffer to width*height. */
   VideoFrame() { pixels.resize(height * width); }
 
-  // Convert pixels from RGB to YIQ in place
+  /** Convert stored pixels from RGB to YIQ in-place */
   void to_yiq() {
     for (auto& pixel : pixels) {
       double r = pixel[0], g = pixel[1], b = pixel[2];
@@ -137,7 +139,7 @@ struct VideoFrame {
     }
   }
 
-  // Convert pixels from YIQ to RGB in place
+  /** Convert stored pixels from YIQ to RGB in-place */
   void to_rgb() {
     for (auto& pixel : pixels) {
       double y = pixel[0], i = pixel[1], q = pixel[2];
@@ -151,19 +153,32 @@ struct VideoFrame {
   }
 };
 
-/* Core functions */
-
-// Generate subcarrier value at time t (seconds), with phase offset (radians)
+/**
+ * @brief Compute subcarrier sample at time t with optional phase offset.
+ * @param t Time in seconds.
+ * @param phase_offset Phase offset in radians.
+ * @return sin(2πFsc·t + phase_offset).
+ */
 inline double subcarrier(double t, double phase_offset = 0.0) {
   return std::sin(2.0 * M_PI * SUBCARRIER_FREQ * t + phase_offset);
 }
 
-// Color burst is at 180 degrees (pi radians) phase
+/**
+ * @brief Compute NTSC color burst at time t.
+ * @param t Time in seconds.
+ * @return BURST_AMPLITUDE·sin(2πFsc·t + π).
+ */
 inline double color_burst(double t) {
   return BURST_AMPLITUDE * subcarrier(t, M_PI);
 }
 
-// Matrix multiply for single pixel (if needed outside of the VideoFrame struct)
+/**
+ * @brief Convert one RGB sample to YIQ.
+ * @param r Red component.
+ * @param g Green component.
+ * @param b Blue component.
+ * @return {Y, I, Q} values.
+ */
 inline std::array<double, 3> rgb_to_yiq(double r, double g, double b) {
   return {RGB_TO_YIQ_MATRIX[0][0] * r + RGB_TO_YIQ_MATRIX[0][1] * g +
               RGB_TO_YIQ_MATRIX[0][2] * b,
@@ -173,6 +188,13 @@ inline std::array<double, 3> rgb_to_yiq(double r, double g, double b) {
               RGB_TO_YIQ_MATRIX[2][2] * b};
 }
 
+/**
+ * @brief Convert one YIQ sample to RGB.
+ * @param y Luma component.
+ * @param i In‑phase chroma.
+ * @param q Quadrature chroma.
+ * @return {R, G, B} values.
+ */
 inline std::array<double, 3> yiq_to_rgb(double y, double i, double q) {
   return {YIQ_TO_RGB_MATRIX[0][0] * y + YIQ_TO_RGB_MATRIX[0][1] * i +
               YIQ_TO_RGB_MATRIX[0][2] * q,

@@ -1,11 +1,9 @@
-/*
- * ntsc_encoder.cpp
+/**
+ * @file ntsc_encoder.cpp
+ * @brief Encode video frames into NTSC-M composite signal at 4 x Fsc.
  *
- * Generates a base-band NTSC-M composite signal at 4×Fsc (≈14.318 MHz) from a
- * VideoFrame.  The encoder is timing-accurate down to individual samples so it
- * can be fed directly into a DAC / SDR or looped back into the software
- * decoder.  The implementation follows the 1953 NTSC signal specification
- * (FCC approval December 17 1953) and SMPTE-170M tolerances.
+ * Generates a timing‑accurate composite signal suitable for DAC/SDR or
+ * loopback testing per FCC 1953 and SMPTE 170 M specification.
  */
 
 #include "../include/dsp_utils.h"
@@ -14,25 +12,38 @@
 #include <cmath>
 #include <vector>
 
-// Number of remaining VBI lines after the 9-line sync block (to approximate
-// 20-21 lines total VBI)
-constexpr int REMAINING_VBI_LINES = 12;
+constexpr int REMAINING_VBI_LINES =
+    12; // Remaining VBI lines to reach ~21 lines total
 
-// Generate half-line blank signal
+/**
+ * @brief Generate half-line blanking interval samples.
+ *
+ * Emits BLANKING_LEVEL for half a line and advances subcarrier phase.
+ *
+ * @param samples Container to append blank samples.
+ * @param subcarrier_phase Subcarrier phase in radians; updated per sample.
+ */
 void generate_half_blank(SignalSamples& samples, double& subcarrier_phase) {
   double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
-  int half_samples = SAMPLES_PER_LINE / 2; // assume even for simplicity
+  int half_samples =
+      SAMPLES_PER_LINE / 2; // Assume even line length for simplicity
   for (int i = 0; i < half_samples; ++i) {
     samples.push_back(BLANKING_LEVEL);
     subcarrier_phase += dphase;
   }
 }
 
-// Generate the vertical sync block (9 lines worth of pulses, no burst)
+/**
+ * @brief Generate vertical sync block for NTSC-M.
+ *
+ * Emits pre-equalizing, broad sync, and post-equalizing pulses.
+ *
+ * @param samples Container to append sync block samples.
+ * @param subcarrier_phase Subcarrier phase in radians; updated per sample.
+ */
 void generate_v_sync_block(SignalSamples& samples, double& subcarrier_phase) {
   double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
 
-  // Lambda function to append segments of samples to signal
   auto signal_push = [&](double level, int n_samples) {
     for (int i = 0; i < n_samples; ++i) {
       samples.push_back(level);
@@ -40,26 +51,37 @@ void generate_v_sync_block(SignalSamples& samples, double& subcarrier_phase) {
     }
   };
 
-  // Pre-equalizing: 6 half-lines
+  // Pre-equalizing pulses (6 half-lines)
   for (int k = 0; k < 6; ++k) {
-    signal_push(SYNC_LEVEL, EQ_PULSE_SAMPLES); // 6 equalizing pulses (low)
-    signal_push(BLANKING_LEVEL, EQ_INTERVAL_SAMPLES); // 6 intervals (high)
+    signal_push(SYNC_LEVEL, EQ_PULSE_SAMPLES);
+    signal_push(BLANKING_LEVEL, EQ_INTERVAL_SAMPLES);
   }
 
-  // Vertical sync: 6 half-lines
+  // Broad sync pulses (6 half-lines)
   for (int k = 0; k < 6; ++k) {
-    signal_push(SYNC_LEVEL, BROAD_PULSE_SAMPLES);   // 6 broad pulses (low)
-    signal_push(BLANKING_LEVEL, SERRATION_SAMPLES); // 6 serrations (high)
+    signal_push(SYNC_LEVEL, BROAD_PULSE_SAMPLES);
+    signal_push(BLANKING_LEVEL, SERRATION_SAMPLES);
   }
 
-  // Post-equalizing: 6 half-lines
+  // Post-equalizing pulses (6 half-lines)
   for (int k = 0; k < 6; ++k) {
-    signal_push(SYNC_LEVEL, EQ_PULSE_SAMPLES); // 6 equalizing pulses (low)
-    signal_push(BLANKING_LEVEL, EQ_INTERVAL_SAMPLES); // 6 intervals (high)
+    signal_push(SYNC_LEVEL, EQ_PULSE_SAMPLES);
+    signal_push(BLANKING_LEVEL, EQ_INTERVAL_SAMPLES);
   }
 }
 
-// Generalized line generation function
+/**
+ * @brief Generate one horizontal line of composite signal.
+ *
+ * Assembles front porch, H-sync, optional color burst, back porch, and active
+ * video or blank line.
+ *
+ * @param yiq_line Pixel YIQ values or empty for a blank line.
+ * @param line_samples Output container resized to SAMPLES_PER_LINE.
+ * @param subcarrier_phase Subcarrier phase in radians; updated per sample.
+ * @param is_blank True to emit blank active video.
+ * @param with_burst True to include color burst segment.
+ */
 void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
                    SignalSamples& line_samples, double& subcarrier_phase,
                    bool is_blank = false, bool with_burst = true) {
@@ -87,7 +109,7 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
     current_phase += dphase;
   }
 
-  // Color burst if it is present
+  // Color burst or idle
   if (with_burst) {
     for (int i = 0; i < COLOR_BURST_SAMPLES; ++i) {
       line_samples[idx++] =
@@ -107,7 +129,7 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
     current_phase += dphase;
   }
 
-  // Active video
+  // Active video or blank line
   double base_level = is_blank ? BLANKING_LEVEL : BLACK_LEVEL;
   double y_scale = WHITE_LEVEL - BLACK_LEVEL;
   if (is_blank) {
@@ -116,6 +138,7 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
       current_phase += dphase;
     }
   } else {
+    // Upsample Y, I, Q channels to sample rate
     std::vector<double> y_low(yiq_line.size());
     std::vector<double> i_low(yiq_line.size());
     std::vector<double> q_low(yiq_line.size());
@@ -133,9 +156,9 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
     upsample_linear(q_low, q_high, ACTIVE_VIDEO_SAMPLES);
 
     for (int i = 0; i < ACTIVE_VIDEO_SAMPLES; ++i) {
-      double luma = y_high[i];       // luminance signal
-      double in_phase = i_high[i];   // in-phase component of chrominance
-      double quadrature = q_high[i]; // quadrature component of chrominance
+      double luma = y_high[i];
+      double in_phase = i_high[i];
+      double quadrature = q_high[i];
       double chroma =
           in_phase * std::cos(current_phase) +
           quadrature * std::sin(current_phase); // chrominance signal
@@ -147,28 +170,35 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
   subcarrier_phase = current_phase;
 }
 
-// Encode a single field with full VBI
+/**
+ * @brief Encode a VideoFrame into NTSC‑M composite field signal.
+ *
+ * Converts frame pixels to YIQ, emits VBI (vertical sync + blank lines),
+ * encodes active lines, and appends half‑line as needed.
+ *
+ * @param input_frame VideoFrame with pixel data and field parity.
+ * @return Composite samples for one field.
+ */
 SignalSamples encode_field(const VideoFrame& input_frame) {
   VideoFrame yiq_frame = input_frame;
   yiq_frame.to_yiq();
 
   SignalSamples field_signal;
-  double subcarrier_phase = 0.0; // assume start at 0; chain if multiple fields
-
+  double subcarrier_phase = 0.0;
   bool is_odd_field = input_frame.is_field_odd;
 
-  // For even field, add half-line blank to shift sync block
+  // Shift sync block for even field
   if (!is_odd_field) {
     generate_half_blank(field_signal, subcarrier_phase);
   }
 
-  // Generate V sync block
+  // Vertical sync block
   SignalSamples vsync_samples;
   generate_v_sync_block(vsync_samples, subcarrier_phase);
   field_signal.insert(field_signal.begin(), vsync_samples.begin(),
                       vsync_samples.end());
 
-  // Remaining VBI blank lines with burst
+  // Remaining VBI lines with burst
   for (int l = 0; l < REMAINING_VBI_LINES; ++l) {
     SignalSamples line;
     generate_line({}, line, subcarrier_phase, true, true); // blank, with burst
@@ -190,15 +220,15 @@ SignalSamples encode_field(const VideoFrame& input_frame) {
     pixel_row_idx++;
   }
 
-  // Add extra blank active lines if needed to approach 262 lines
-  int extra_active_blank = 242 - input_frame.height; // eg. 242 - 240 = 2
+  // Pad extra blank lines to 262 total
+  int extra_active_blank = 242 - input_frame.height;
   for (int l = 0; l < extra_active_blank; ++l) {
     SignalSamples line;
-    generate_line({}, line, subcarrier_phase, true, true); // blank active line
+    generate_line({}, line, subcarrier_phase, true, true);
     field_signal.insert(field_signal.end(), line.begin(), line.end());
   }
 
-  //  For odd field, add half-line blank at end
+  // Append half-line blank for odd field
   if (is_odd_field) {
     generate_half_blank(field_signal, subcarrier_phase);
   }
