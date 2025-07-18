@@ -1,8 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
 mkdir -p build
-cd build
-echo "\nBuilding executable...\n"
-cmake ..
-make
-cd ..
-echo "\nRunning executable...\n"
-./build/ntscpp
+echo "Configuring..."
+cmake -S . -B build
+echo "Building..."
+cmake --build build --config Release
+# echo "Running executable..."
+# ./build/ntscpp
