@@ -172,8 +172,8 @@ void encode(const std::string& input_path, const std::string& output_path) {
         break;
       }
 
-      sws_scale(sws_ctx, frame->data, frame->linesize, frame->height,
-                frame->width, rgb_frame->data, rgb_frame->linesize);
+      sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
+                rgb_frame->data, rgb_frame->linesize);
 
       // Split into two fields (odd and even lines)
       for (bool is_odd : {true, false}) {
