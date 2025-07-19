@@ -10,14 +10,14 @@ This project provides a command-line tool to encode RGB video frames to NTSC com
 - [FFmpeg](https://ffmpeg.org/) for audio and video format conversions.
 - [FFTW](https://www.fftw.org/) for performant Discrete Fourier Transform operations (with [multithreading](https://www.fftw.org/doc/Installation-and-Supported-Hardware_002fSoftware.html) support).
 
-### Build and Run
-Run `./runme.sh` to build and execute the binary.
+### Build
+Run `chmod +x runme.sh && ./runme.sh` to build the binary.
 
 ### Usage
-- Encoding mode: `./build/ntscpp encode input.mp4 output.ntsc`
-- Decoding mode: `./build/ntscpp decode input.ntsc output.mp4`
+- Encoding MP4 to NTSC: `./build/ntscpp encode input.mp4 output.ntsc`
+- Decoding NTSC to MP4: `./build/ntscpp decode input.ntsc output.mp4`
 
-### To-Do
+### Future upgrades
 - Optimize DSP operations via batching
 - Add audio support (FM modulation for audio signal)
 - Add support for encoding / decoding live streams of data
