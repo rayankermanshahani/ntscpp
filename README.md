@@ -6,6 +6,11 @@ An NTSC-M codec implementation in C++ for encoding/decoding baseband composite s
 This project provides a command-line tool to encode RGB video frames to NTSC composite signals and decode them back, simulating analog TV standards.
 It uses FFmpeg for MP4 I/O and FFTW for DSP.
 
+### Requirements
+- [CMake](https://cmake.org/) for the build system.
+- [FFmpeg](https://ffmpeg.org/) for audio and video format conversions.
+- [FFTW](https://www.fftw.org/) for performant Discrete Fourier Transform operations (with [multithreading](https://www.fftw.org/doc/Installation-and-Supported-Hardware_002fSoftware.html) support).
+
 ### Build and Run
 Run `./runme.sh` to build and execute the binary.
 
