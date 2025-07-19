@@ -70,10 +70,15 @@ constexpr int BROAD_PULSE_SAMPLES =
 /* Video dimensions */
 constexpr int VISIBLE_WIDTH = 720;
 constexpr int VISIBLE_HEIGHT = 480;
-constexpr int LINES_PER_FIELD = 263;
+constexpr int FULL_LINES_PER_FIELD = 262;
+constexpr int LINES_PER_FIELD = FULL_LINES_PER_FIELD;
 constexpr int LINES_PER_FRAME = 525;
-constexpr int VBI_LINES_PER_FIELD =
-    LINES_PER_FIELD - (VISIBLE_HEIGHT / 2); ///< ~21
+constexpr int VBI_FULL_LINES = 21;
+constexpr int VBI_LINES_PER_FIELD = VBI_FULL_LINES;
+constexpr int V_SYNC_EQUIV_LINES = 9; ///< 3 pre + 3 broad + 3 post full-line
+constexpr int REMAINING_VBI_LINES = VBI_FULL_LINES - V_SYNC_EQUIV_LINES; ///< 12
+constexpr int ACTIVE_PLUS_BLANK_LINES =
+    FULL_LINES_PER_FIELD - VBI_FULL_LINES; ///< 241
 
 /* Signal levels */
 constexpr double IRE_TO_NORM =
