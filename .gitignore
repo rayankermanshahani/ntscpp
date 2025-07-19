@@ -1,3 +1,5 @@
 build/
+data/
 plan.txt
 notes.md
+.DS_Store
