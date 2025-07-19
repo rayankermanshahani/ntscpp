@@ -12,6 +12,7 @@
 #include "../include/ntsc_common.h"
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <vector>
 
 constexpr double SYNC_THRESHOLD =
@@ -68,11 +69,7 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
   output_frame.is_field_odd = is_odd_field;
 
   auto sync_starts = detect_h_syncs(input_signal);
-  if (sync_starts.size() < static_cast<size_t>(LINES_PER_FIELD)) {
-    return output_frame; // Return empty frame on error
-  }
-
-  size_t first_active_idx = VBI_LINES_PER_FIELD;
+  size_t first_active_idx = static_cast<size_t>(REMAINING_VBI_LINES);
 
   if (first_active_idx >= sync_starts.size()) {
     return output_frame; // No active lines detected
@@ -89,7 +86,7 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
     size_t line_start = sync_start > static_cast<size_t>(FRONT_PORCH_SAMPLES)
                             ? sync_start - FRONT_PORCH_SAMPLES
                             : 0;
-    size_t extract_len = std::min(static_cast<size_t>(FRONT_PORCH_SAMPLES),
+    size_t extract_len = std::min(static_cast<size_t>(SAMPLES_PER_LINE),
                                   input_signal.size() - line_start);
     SignalSamples line(input_signal.begin() + line_start,
                        input_signal.begin() + line_start + extract_len);
@@ -98,9 +95,9 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
       line.resize(SAMPLES_PER_LINE, BLANKING_LEVEL); // Pad short lines
     }
 
-    SignalSamples burst_samples(line.begin() + timings.active_video_start,
-                                line.begin() + timings.active_video_start +
-                                    timings.active_video_samples);
+    SignalSamples burst_samples(line.begin() + timings.color_burst_start,
+                                line.begin() + timings.color_burst_start +
+                                    COLOR_BURST_SAMPLES);
     double burst_phase = detect_burst_phase(burst_samples);
 
     SignalSamples active_samples(line.begin() + timings.active_video_start,
@@ -146,6 +143,11 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
       output_frame.pixels[row * output_frame.width + p] = rgb;
     }
     ++row;
+  }
+
+  // TODO: remove debugging log later
+  if (row < static_cast<size_t>(output_frame.height)) {
+    std::cerr << "Warning: Decoded only " << row << " rows" << std::endl;
   }
 
   return output_frame;
