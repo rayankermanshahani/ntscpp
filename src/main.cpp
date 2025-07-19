@@ -172,8 +172,8 @@ void encode(const std::string& input_path, const std::string& output_path) {
         break;
       }
 
-      sws_scale(sws_ctx, frame->data, frame->linesize, frame->height,
-                frame->width, rgb_frame->data, rgb_frame->linesize);
+      sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
+                rgb_frame->data, rgb_frame->linesize);
 
       // Split into two fields (odd and even lines)
       for (bool is_odd : {true, false}) {
@@ -181,7 +181,7 @@ void encode(const std::string& input_path, const std::string& output_path) {
         vframe.is_field_odd = is_odd;
         vframe.height = dec_ctx->height / 2;
         vframe.width = dec_ctx->width;
-        vframe.pixels.reserve(vframe.width * vframe.height);
+        vframe.pixels.resize(vframe.width * vframe.height);
 
         int field_line = 0;
         for (int y = is_odd ? 0 : 1; y < dec_ctx->height; y += 2) {
@@ -250,8 +250,10 @@ void decode(const std::string& input_path, const std::string& output_path) {
   inf.read(reinterpret_cast<char*>(full_signal.data()), file_size);
   inf.close();
 
-  // Compute expected field size
-  size_t field_size = static_cast<size_t>(LINES_PER_FIELD) * SAMPLES_PER_LINE;
+  // Compute expected field size (accounts for 262 full lines + half line)
+  size_t field_size =
+      static_cast<size_t>(FULL_LINES_PER_FIELD) * SAMPLES_PER_LINE +
+      (SAMPLES_PER_LINE / 2);
   size_t num_fields = num_samples / field_size;
   if (num_fields < 2 || num_samples % field_size != 0) {
     std::cerr << "Error: Input size not multiple of field size" << std::endl;
@@ -413,8 +415,8 @@ void decode(const std::string& input_path, const std::string& output_path) {
     }
 
     // Convert RGB to YUV420P
-    sws_scale(out_sws_ctx, rgb_temp->data, rgb_temp->linesize, VISIBLE_HEIGHT,
-              VISIBLE_WIDTH, out_frame->data, out_frame->linesize);
+    sws_scale(out_sws_ctx, rgb_temp->data, rgb_temp->linesize, 0,
+              VISIBLE_HEIGHT, out_frame->data, out_frame->linesize);
     AVRational src_tb{1, static_cast<int>(FRAME_RATE * 1000)};
     out_frame->pts = av_rescale_q(frame_count, src_tb, enc_ctx->time_base);
 
