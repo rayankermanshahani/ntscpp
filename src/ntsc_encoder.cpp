@@ -12,9 +12,6 @@
 #include <cmath>
 #include <vector>
 
-constexpr int REMAINING_VBI_LINES =
-    12; // Remaining VBI lines to reach ~21 lines total
-
 /**
  * @brief Generate half-line blanking interval samples.
  *
@@ -220,8 +217,8 @@ SignalSamples encode_field(const VideoFrame& input_frame) {
     pixel_row_idx++;
   }
 
-  // Pad extra blank lines to 262 total
-  int extra_active_blank = 242 - input_frame.height;
+  // Pad extra blank lines to reach active + blank total
+  int extra_active_blank = ACTIVE_PLUS_BLANK_LINES - input_frame.height;
   for (int l = 0; l < extra_active_blank; ++l) {
     SignalSamples line;
     generate_line({}, line, subcarrier_phase, true, true);
