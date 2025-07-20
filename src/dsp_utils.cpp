@@ -148,7 +148,6 @@ double detect_burst_phase(const SignalSamples& burst_samples) {
   }
 
   double phase = std::atan2(sum_q, sum_i);
-  phase += M_PI; // Account for 180 degree burst offset
   return phase;
 }
 
