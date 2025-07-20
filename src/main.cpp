@@ -289,11 +289,13 @@ void decode(const std::string& input_path, const std::string& output_path) {
     return;
   }
 
+  AVRational ntsc_framerate = {30000, 1001}; // ~29.97 fps
+
   enc_ctx->width = VISIBLE_WIDTH;
   enc_ctx->height = VISIBLE_HEIGHT;
   enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-  enc_ctx->time_base = {1, static_cast<int>(FRAME_RATE * 1000)}; // ms precision
-  enc_ctx->framerate = {static_cast<int>(FRAME_RATE * 1000), 1000};
+  enc_ctx->time_base = {ntsc_framerate.den, ntsc_framerate.num}; // inverse fr
+  enc_ctx->framerate = ntsc_framerate;
   enc_ctx->gop_size = 12;
   enc_ctx->max_b_frames = 1;
 
@@ -386,7 +388,7 @@ void decode(const std::string& input_path, const std::string& output_path) {
     SignalSamples odd_signal(full_signal.begin() + odd_start,
                              full_signal.begin() + odd_start + field_size);
     VideoFrame odd_frame = decode_field(odd_signal, true);
-    //
+
     // Decode even field second
     size_t even_start = (field_idx + 1) * field_size;
     SignalSamples even_signal(full_signal.begin() + even_start,
@@ -398,7 +400,7 @@ void decode(const std::string& input_path, const std::string& output_path) {
       continue;
     }
 
-    // interleave fields into full RGB frame
+    // Interleave fields into full RGB frame
     for (int y = 0; y < VISIBLE_HEIGHT; ++y) {
       const VideoFrame& src_frame = (y % 2 == 0) ? odd_frame : even_frame;
       int src_y = y / 2;
@@ -417,8 +419,8 @@ void decode(const std::string& input_path, const std::string& output_path) {
     // Convert RGB to YUV420P
     sws_scale(out_sws_ctx, rgb_temp->data, rgb_temp->linesize, 0,
               VISIBLE_HEIGHT, out_frame->data, out_frame->linesize);
-    AVRational src_tb{1, static_cast<int>(FRAME_RATE * 1000)};
-    out_frame->pts = av_rescale_q(frame_count, src_tb, enc_ctx->time_base);
+
+    out_frame->pts = frame_count; // Set presentation timestamp
 
     if (avcodec_send_frame(enc_ctx, out_frame) < 0) {
       std::cerr << "Error: Failed to send frame to encoder" << std::endl;
