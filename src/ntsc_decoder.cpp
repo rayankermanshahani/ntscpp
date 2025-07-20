@@ -99,6 +99,7 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
                                 line.begin() + timings.color_burst_start +
                                     COLOR_BURST_SAMPLES);
     double burst_phase = detect_burst_phase(burst_samples);
+    double demod_phase = burst_phase + M_PI / 2.0;
 
     SignalSamples active_samples(line.begin() + timings.active_video_start,
                                  line.begin() + timings.active_video_start +
@@ -118,8 +119,8 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
     double omega = 2.0 * M_PI * SUBCARRIER_FREQ;
 
     for (size_t s = 0; s < active_samples.size(); ++s) {
-      double ref_cos = std::cos(omega * t + burst_phase);
-      double ref_sin = std::sin(omega * t + burst_phase);
+      double ref_cos = std::cos(omega * t + demod_phase);
+      double ref_sin = std::sin(omega * t + demod_phase);
       i_mod[s] = 2.0 * c[s] * ref_cos; // Demodulate I component
       q_mod[s] = 2.0 * c[s] * ref_sin; // Demodulate Q component
       t += dt;
