@@ -99,18 +99,18 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
                                 line.begin() + timings.color_burst_start +
                                     COLOR_BURST_SAMPLES);
     double burst_phase = detect_burst_phase(burst_samples);
-    double demod_phase = burst_phase + M_PI / 2.0;
+    double demod_phase = burst_phase - M_PI;
 
     SignalSamples active_samples(line.begin() + timings.active_video_start,
                                  line.begin() + timings.active_video_start +
                                      timings.active_video_samples);
 
     SignalSamples y = active_samples;
-    apply_low_pass_filter(y, 4.2e6); // Filter Y to 4.2 MHz bandwidth
+    apply_low_pass_filter(y, 4.2e6); // 4.2 MHz luma bandwidth
 
     SignalSamples c = active_samples;
     apply_band_pass_filter(c, SUBCARRIER_FREQ,
-                           1.3e6); // Filter C to 1.3 MHz bandwidth
+                           2.6e6); // 1.3 MHz * 2 chroma bandwidth
 
     SignalSamples i_mod(active_samples.size());
     SignalSamples q_mod(active_samples.size());
@@ -136,9 +136,9 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
     downsample_average(i_mod, i_pix, output_frame.width);
     downsample_average(q_mod, q_pix, output_frame.width);
 
-    double y_scale = WHITE_LEVEL - BLACK_LEVEL;
     for (int p = 0; p < output_frame.width; ++p) {
-      double norm_y = (y_pix[p] - BLACK_LEVEL) / y_scale; // Normalize Y
+      double norm_y = (y_pix[p] - BLACK_LEVEL) /
+                      (WHITE_LEVEL - BLACK_LEVEL); // Normalized luma
       std::array<double, 3> yiq = {norm_y, i_pix[p], q_pix[p]};
       std::array<double, 3> rgb = yiq_to_rgb(yiq[0], yiq[1], yiq[2]);
       output_frame.pixels[row * output_frame.width + p] = rgb;
