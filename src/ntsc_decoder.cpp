@@ -77,6 +77,8 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
 
   NTSCTimings timings;
   size_t row = 0;
+  // Previous active-video samples for 1-H comb filtering
+  SignalSamples prev_active; // Empty for first line
 
   for (size_t l = first_active_idx;
        l < first_active_idx + static_cast<int>(output_frame.height) &&
@@ -99,18 +101,32 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
                                 line.begin() + timings.color_burst_start +
                                     COLOR_BURST_SAMPLES);
     double burst_phase = detect_burst_phase(burst_samples);
-    double demod_phase = burst_phase - M_PI;
+    constexpr double BURST_TO_I_OFFSET = M_PI;    // -I relative to burst
+    constexpr double COS_SIN_QUAD_SHIFT = M_PI_2; // +90deg to reach +I
+    double demod_phase = burst_phase + BURST_TO_I_OFFSET + COS_SIN_QUAD_SHIFT;
 
     SignalSamples active_samples(line.begin() + timings.active_video_start,
                                  line.begin() + timings.active_video_start +
                                      timings.active_video_samples);
+    SignalSamples y(active_samples.size());
+    SignalSamples c(active_samples.size());
 
-    SignalSamples y = active_samples;
-    apply_low_pass_filter(y, 4.2e6); // 4.2 MHz luma bandwidth
-
-    SignalSamples c = active_samples;
-    apply_band_pass_filter(c, SUBCARRIER_FREQ,
-                           2.6e6); // 1.3 MHz * 2 chroma bandwidth
+    if (!prev_active.empty()) {
+      // Y = (line + prev) / 2; C = (line - prev) / 2
+      for (size_t s = 0; s < active_samples.size(); ++s) {
+        double sum = active_samples[s] + prev_active[s];
+        double diff = active_samples[s] - prev_active[s];
+        y[s] = 0.5 * sum;
+        c[s] = 0.5 * diff;
+      }
+    } else {
+      // First active line
+      y = active_samples;
+      apply_low_pass_filter(y, 4.2e6); // Isolate luma to 4.2 MHz bandwidth
+      c = active_samples;
+      apply_band_pass_filter(c, SUBCARRIER_FREQ,
+                             2.6e6); // Isolate chroma to 1.3 MHz * 2 bandwidth
+    }
 
     SignalSamples i_mod(active_samples.size());
     SignalSamples q_mod(active_samples.size());
