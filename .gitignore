@@ -3,3 +3,8 @@ data/
 plan.txt
 notes.md
 .DS_Store
+prompt.md
+loop_nge.sh
+loop_bars.sh
+refactor/
+
