@@ -110,7 +110,9 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
   if (with_burst) {
     for (int i = 0; i < COLOR_BURST_SAMPLES; ++i) {
       line_samples[idx++] =
-          BLANKING_LEVEL + BURST_AMPLITUDE * std::sin(current_phase + M_PI);
+          BLANKING_LEVEL + BURST_AMPLITUDE * std::cos(current_phase + M_PI);
+      // line_samples[idx++] = BLANKING_LEVEL + BURST_AMPLITUDE *
+      // std::sin(current_phase + M_PI);
       current_phase += dphase;
     }
   } else {
@@ -128,7 +130,7 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
 
   // Active video or blank line
   double base_level = is_blank ? BLANKING_LEVEL : BLACK_LEVEL;
-  double y_scale = WHITE_LEVEL - BLACK_LEVEL;
+  double scale_factor = WHITE_LEVEL - BLACK_LEVEL;
   if (is_blank) {
     for (int i = 0; i < ACTIVE_VIDEO_SAMPLES; ++i) {
       line_samples[idx++] = base_level;
@@ -156,10 +158,9 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
       double luma = y_high[i];
       double in_phase = i_high[i];
       double quadrature = q_high[i];
-      double chroma =
-          in_phase * std::cos(current_phase) +
-          quadrature * std::sin(current_phase); // chrominance signal
-      line_samples[idx++] = base_level + luma * y_scale + chroma;
+      double chroma = in_phase * std::cos(current_phase) +
+                      quadrature * std::sin(current_phase);
+      line_samples[idx++] = scale_factor * luma + chroma + base_level;
       current_phase += dphase;
     }
   }
