@@ -21,7 +21,7 @@
  * @param subcarrier_phase Subcarrier phase in radians; updated per sample.
  */
 void generate_half_blank(SignalSamples& samples, double& subcarrier_phase) {
-  double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
+  double dphase = 2.0 * M_PI * FSC / SR;
   int half_samples =
       SAMPLES_PER_LINE / 2; // Assume even line length for simplicity
   for (int i = 0; i < half_samples; ++i) {
@@ -39,7 +39,7 @@ void generate_half_blank(SignalSamples& samples, double& subcarrier_phase) {
  * @param subcarrier_phase Subcarrier phase in radians; updated per sample.
  */
 void generate_v_sync_block(SignalSamples& samples, double& subcarrier_phase) {
-  double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
+  double dphase = 2.0 * M_PI * FSC / SR;
 
   auto signal_push = [&](double level, int n_samples) {
     for (int i = 0; i < n_samples; ++i) {
@@ -83,7 +83,7 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
                    SignalSamples& line_samples, double& subcarrier_phase,
                    bool is_blank = false, bool with_burst = true) {
   line_samples.resize(SAMPLES_PER_LINE);
-  double dphase = 2.0 * M_PI * SUBCARRIER_FREQ / SAMPLING_RATE;
+  double dphase = 2.0 * M_PI * FSC / SR;
   double current_phase = subcarrier_phase;
 
   int idx = 0;
@@ -111,8 +111,6 @@ void generate_line(const std::vector<std::array<double, 3>>& yiq_line,
     for (int i = 0; i < COLOR_BURST_SAMPLES; ++i) {
       line_samples[idx++] =
           BLANKING_LEVEL + BURST_AMPLITUDE * std::cos(current_phase + M_PI);
-      // line_samples[idx++] = BLANKING_LEVEL + BURST_AMPLITUDE *
-      // std::sin(current_phase + M_PI);
       current_phase += dphase;
     }
   } else {

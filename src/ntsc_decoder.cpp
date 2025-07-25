@@ -124,15 +124,15 @@ VideoFrame decode_field(const SignalSamples& input_signal, bool is_odd_field) {
       y = active_samples;
       apply_low_pass_filter(y, 4.2e6); // Isolate luma to 4.2 MHz bandwidth
       c = active_samples;
-      apply_band_pass_filter(c, SUBCARRIER_FREQ,
+      apply_band_pass_filter(c, FSC,
                              2.6e6); // Isolate chroma to 1.3 MHz * 2 bandwidth
     }
 
     SignalSamples i_mod(active_samples.size());
     SignalSamples q_mod(active_samples.size());
     double t = 0.0;
-    double dt = 1.0 / SAMPLING_RATE;
-    double omega = 2.0 * M_PI * SUBCARRIER_FREQ;
+    double dt = 1.0 / SR;
+    double omega = 2.0 * M_PI * FSC;
 
     for (size_t s = 0; s < active_samples.size(); ++s) {
       double ref_cos = std::cos(omega * t + demod_phase);

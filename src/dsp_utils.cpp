@@ -44,7 +44,7 @@ void apply_low_pass_filter(SignalSamples& signal, double cutoff_freq) {
   fftw_execute(forward_plan);
 
   // Comput ecutoff bin index
-  double fs = SAMPLING_RATE;
+  double fs = SR;
   size_t cutoff_bin = static_cast<size_t>(std::round(cutoff_freq * n / fs));
 
   // Zero out high-frequency bins
@@ -94,7 +94,7 @@ void apply_band_pass_filter(SignalSamples& signal, double center_freq,
   fftw_execute(forward_plan);
 
   // Compute band limits in bins
-  double fs = SAMPLING_RATE;
+  double fs = SR;
   size_t low_bin =
       static_cast<size_t>(std::round((center_freq - bandwidth / 2.0) * n / fs));
   size_t high_bin =
@@ -138,8 +138,8 @@ double detect_burst_phase(const SignalSamples& burst_samples) {
   double sum_i = 0.0; // Cos projection
   double sum_q = 0.0; // Sin projection
   double t = 0.0;
-  double dt = 1.0 / SAMPLING_RATE;
-  double omega = 2.0 * M_PI * SUBCARRIER_FREQ;
+  double dt = 1.0 / SR;
+  double omega = 2.0 * M_PI * FSC;
 
   for (double s : burst_samples) {
     sum_i += s * std::cos(omega * t);
