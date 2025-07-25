@@ -32,6 +32,7 @@ include_directories(
 
 add_executable(ntscpp 
   src/main.cpp
+  src/ntsc_codec.cpp
   src/ntsc_encoder.cpp
   src/ntsc_decoder.cpp
   src/dsp_utils.cpp
